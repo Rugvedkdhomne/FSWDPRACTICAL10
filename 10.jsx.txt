@@ -1,0 +1,90 @@
+import React, { useState } from "react";
+import "./App.css";
+
+function App() {
+  const [task, setTask] = useState("");
+  const [tasks, setTasks] = useState([]);
+
+  // Add Task
+  const addTask = () => {
+    if (task.trim() === "") return;
+
+    setTasks([...tasks, { text: task, completed: false }]);
+    setTask("");
+  };
+
+  // Delete Task
+  const deleteTask = (index) => {
+    const newTasks = tasks.filter((_, i) => i !== index);
+    setTasks(newTasks);
+  };
+
+  // Toggle Complete
+  const toggleComplete = (index) => {
+    const newTasks = [...tasks];
+    newTasks[index].completed = !newTasks[index].completed;
+    setTasks(newTasks);
+  };
+
+  return (
+    <div className="app">
+      <h1>To-Do List</h1>
+
+      <div className="input-section">
+        <input
+          type="text"
+          value={task}
+          placeholder="Enter a task..."
+          onChange={(e) => setTask(e.target.value)}
+        />
+        <button onClick={addTask}>Add</button>
+      </div>
+
+      <ul>
+        {tasks.map((t, index) => (
+          <li key={index} className={t.completed ? "done" : ""}>
+            <span onClick={() => toggleComplete(index)}>
+              {t.text}
+            </span>
+            <button onClick={() => deleteTask(index)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default App;
+            key={index}
+            className="cell"
+            onClick={() => handleClick(index)}
+          >
+            {cell}
+          </button>
+        ))}
+      </div>
+
+      <button className="reset" onClick={() => setBoard(Array(9).fill(null))}>
+        Restart Game
+      </button>
+    </div>
+  );
+}
+
+// Winning Logic
+function calculateWinner(board) {
+  const lines = [
+    [0,1,2], [3,4,5], [6,7,8], // rows
+    [0,3,6], [1,4,7], [2,5,8], // columns
+    [0,4,8], [2,4,6]           // diagonals
+  ];
+
+  for (let [a, b, c] of lines) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return board[a];
+    }
+  }
+  return null;
+}
+
+export default App;
