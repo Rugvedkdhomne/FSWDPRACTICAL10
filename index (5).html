@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>To-Do List</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #080808; color: #e8e8e8; font-family: 'DM Sans', sans-serif; min-height: 100vh; padding: 40px 20px; }
+    body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse at 70% 20%, rgba(168,255,120,0.04) 0%, transparent 60%); pointer-events: none; }
+    @keyframes slideDown { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideOut { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(60px)} }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    * { scrollbar-width:thin; scrollbar-color:#1e1e1e transparent; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+const PRIORITIES = { high:'#ff6b6b', medium:'#fbbf24', low:'#a8ff78' };
+const CATEGORIES = ['All', 'Work', 'Personal', 'Study', 'Health'];
+
+const SAMPLE = [
+  { id:1, text:'Complete To-Do App', done:false, priority:'high', cat:'Study', created: Date.now()-3600000 },
+  { id:2, text:'Push code to GitHub', done:false, priority:'medium', cat:'Work', created: Date.now()-1800000 },
+  { id:3, text:'Review MongoDB connection setup', done:true, priority:'low', cat:'Study', created: Date.now()-7200000 },
+];
+
+function timeAgo(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  return `${Math.floor(diff/86400)}d ago`;
+}
+
+function TodoApp() {
+  const [todos, setTodos]     = useState(SAMPLE);
+  const [input, setInput]     = useState('');
+  const [priority, setPriority] = useState('medium');
+  const [cat, setCat]         = useState('Work');
+  const [filter, setFilter]   = useState('All');
+  const [catFilter, setCatFilter] = useState('All');
+  const [search, setSearch]   = useState('');
+  const [editId, setEditId]   = useState(null);
+  const [editText, setEditText] = useState('');
+  const [removing, setRemoving] = useState(null);
+  const inputRef = useRef();
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const add = () => {
+    if (!input.trim()) return;
+    setTodos(t => [{ id:Date.now(), text:input.trim(), done:false, priority, cat, created:Date.now() }, ...t]);
+    setInput(''); inputRef.current?.focus();
+  };
+
+  const toggle = (id) => setTodos(t => t.map(x => x.id===id ? {...x, done:!x.done} : x));
+  const remove = (id) => { setRemoving(id); setTimeout(() => { setTodos(t => t.filter(x => x.id !== id)); setRemoving(null); }, 300); };
+  const saveEdit = (id) => { if (!editText.trim()) return; setTodos(t => t.map(x => x.id===id ? {...x, text:editText} : x)); setEditId(null); };
+  const clearDone = () => setTodos(t => t.filter(x => !x.done));
+
+  const visible = todos.filter(t => {
+    if (filter === 'Active' && t.done) return false;
+    if (filter === 'Done'   && !t.done) return false;
+    if (catFilter !== 'All' && t.cat !== catFilter) return false;
+    if (search && !t.text.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const done  = todos.filter(t => t.done).length;
+  const total = todos.length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+
+  return (
+    <div style={{ maxWidth:600, margin:'0 auto', animation:'fadeUp 0.4s ease' }}>
+      
+      {/* Header */}
+      <div style={{ marginBottom:32 }}>
+        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:'2.2rem', fontWeight:800, letterSpacing:'-1px', marginBottom:4 }}>Task Manager</div>
+        <div style={{ color:'#555', fontSize:'0.88rem' }}>{done}/{total} tasks completed · {pct}% done</div>
+        
+        {/* Progress */}
+        <div style={{ marginTop:12, height:4, background:'#1a1a1a', borderRadius:4, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#a8ff78,#78ffd6)', borderRadius:4, transition:'width 0.4s ease' }} />
+        </div>
+      </div>
+
+      {/* Add Todo */}
+      <div style={{ background:'#111', border:'1px solid #1e1e1e', borderRadius:16, padding:'20px', marginBottom:20 }}>
+        <div style={{ display:'flex', gap:10, marginBottom:14 }}>
+          <input ref={inputRef} value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key==='Enter' && add()}
+            placeholder="What needs to be done?"
+            style={{ flex:1, background:'#0d0d0d', border:'1px solid #1e1e1e', color:'#e8e8e8', fontFamily:"'DM Sans',sans-serif", fontSize:'0.95rem', padding:'12px 16px', borderRadius:10, outline:'none' }} />
+          <button onClick={add}
+            style={{ background:'#a8ff78', border:'none', borderRadius:10, padding:'12px 20px', fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'0.88rem', cursor:'pointer', color:'#000', whiteSpace:'nowrap', transition:'transform 0.15s' }}
+            onMouseDown={e => e.currentTarget.style.transform='scale(0.95)'}
+            onMouseUp={e => e.currentTarget.style.transform='scale(1)'}>
+            + Add
+          </button>
+        </div>
+
+        {/* Metadata */}
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+          {/* Priority */}
+          <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+            <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:'0.65rem', color:'#555' }}>PRIORITY</span>
+            {Object.keys(PRIORITIES).map(p => (
+              <button key={p} onClick={() => setPriority(p)}
+                style={{ background: priority===p ? `${PRIORITIES[p]}1a` : 'none', border:`1px solid ${priority===p ? PRIORITIES[p] : '#1e1e1e'}`, color: priority===p ? PRIORITIES[p] : '#555', borderRadius:6, padding:'4px 10px', cursor:'pointer', fontFamily:"'JetBrains Mono',monospace", fontSize:'0.68rem', transition:'all 0.15s' }}>
+                {p}
+              </button>
+            ))}
+          </div>
+
+          {/* Category */}
+          <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+            <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:'0.65rem', color:'#555' }}>CAT</span>
+            <select value={cat} onChange={e => setCat(e.target.value)}
+              style={{ background:'#0d0d0d', border:'1px solid #1e1e1e', color:'#e8e8e8', fontFamily:"'JetBrains Mono',monospace", fontSize:'0.72rem', padding:'4px 10px', borderRadius:6, outline:'none', cursor:'pointer' }}>
+              {CATEGORIES.filter(c => c!=='All').map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="🔍 Search tasks..."
+          style={{ flex:1, minWidth:150, background:'#111', border:'1px solid #1e1e1e', color:'#e8e8e8', fontFamily:"'DM Sans',sans-serif", fontSize:'0.85rem', padding:'8px 14px', borderRadius:8, outline:'none' }} />
+        {['All','Active','Done'].map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            style={{ background:'none', border:`1px solid ${filter===f?'#a8ff78':'#1e1e1e'}`, color: filter===f ? '#a8ff78' : '#555', fontFamily:"'JetBrains Mono',monospace", fontSize:'0.68rem', padding:'6px 14px', borderRadius:8, cursor:'pointer', transition:'all 0.15s' }}>
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* Cat filter chips */}
+      <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
+        {CATEGORIES.map(c => (
+          <button key={c} onClick={() => setCatFilter(c)}
+            style={{ background: catFilter===c ? 'rgba(168,255,120,0.08)' : 'none', border:`1px solid ${catFilter===c?'rgba(168,255,120,0.3)':'#1e1e1e'}`, color: catFilter===c ? '#a8ff78' : '#555', fontFamily:"'JetBrains Mono',monospace", fontSize:'0.65rem', padding:'4px 12px', borderRadius:12, cursor:'pointer', transition:'all 0.15s' }}>
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
+      {visible.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'48px', color:'#333', fontFamily:"'JetBrains Mono',monospace", fontSize:'0.82rem' }}>
+          {search ? '🔍 No results found' : '✓ Nothing here'}
+        </div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {visible.map(todo => (
+            <div key={todo.id}
+              style={{ background:'#111', border:'1px solid #1e1e1e', borderRadius:12, padding:'16px 18px', display:'flex', alignItems:'flex-start', gap:14, animation: removing===todo.id ? 'slideOut 0.3s ease forwards' : 'slideDown 0.3s ease', opacity: todo.done ? 0.6 : 1, transition:'opacity 0.2s', borderLeft:`3px solid ${PRIORITIES[todo.priority]}` }}>
+
+              {/* Checkbox */}
+              <button onClick={() => toggle(todo.id)}
+                style={{ width:22, height:22, borderRadius:6, flexShrink:0, marginTop:1, background: todo.done ? '#a8ff78' : 'none', border:`2px solid ${todo.done ? '#a8ff78' : '#333'}`, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#000', transition:'all 0.15s' }}>
+                {todo.done ? '✓' : ''}
+              </button>
+
+              {/* Content */}
+              <div style={{ flex:1, minWidth:0 }}>
+                {editId === todo.id ? (
+                  <div style={{ display:'flex', gap:8 }}>
+                    <input value={editText} onChange={e => setEditText(e.target.value)}
+                      onKeyDown={e => { if(e.key==='Enter') saveEdit(todo.id); if(e.key==='Escape') setEditId(null); }}
+                      autoFocus
+                      style={{ flex:1, background:'#0d0d0d', border:'1px solid #a8ff78', color:'#e8e8e8', fontFamily:"'DM Sans',sans-serif", fontSize:'0.9rem', padding:'6px 10px', borderRadius:6, outline:'none' }} />
+                    <button onClick={() => saveEdit(todo.id)}
+                      style={{ background:'#a8ff78', border:'none', borderRadius:6, padding:'6px 12px', cursor:'pointer', fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'0.75rem', color:'#000' }}>Save</button>
+                    <button onClick={() => setEditId(null)}
+                      style={{ background:'none', border:'1px solid #1e1e1e', borderRadius:6, padding:'6px 12px', cursor:'pointer', color:'#555', fontSize:'0.75rem' }}>✕</button>
+                  </div>
+                ) : (
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:'0.92rem', textDecoration: todo.done ? 'line-through' : 'none', color: todo.done ? '#444' : '#e8e8e8', marginBottom:6 }}>
+                    {todo.text}
+                  </div>
+                )}
+                <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                  <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:'0.6rem', color:'#555' }}>{timeAgo(todo.created)}</span>
+                  <span style={{ background:`${PRIORITIES[todo.priority]}18`, border:`1px solid ${PRIORITIES[todo.priority]}40`, color:PRIORITIES[todo.priority], borderRadius:4, padding:'1px 7px', fontSize:'0.6rem', fontFamily:"'JetBrains Mono',monospace" }}>{todo.priority}</span>
+                  <span style={{ background:'rgba(168,255,120,0.06)', border:'1px solid rgba(168,255,120,0.15)', color:'#a8ff78', borderRadius:4, padding:'1px 7px', fontSize:'0.6rem', fontFamily:"'JetBrains Mono',monospace" }}>{todo.cat}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                <button onClick={() => { setEditId(todo.id); setEditText(todo.text); }}
+                  style={{ background:'none', border:'1px solid #1e1e1e', borderRadius:6, width:30, height:30, cursor:'pointer', color:'#555', fontSize:'0.85rem', transition:'all 0.15s' }}
+                  onMouseEnter={e => { e.target.style.borderColor='#a8ff78'; e.target.style.color='#a8ff78'; }}
+                  onMouseLeave={e => { e.target.style.borderColor='#1e1e1e'; e.target.style.color='#555'; }}>✎</button>
+                <button onClick={() => remove(todo.id)}
+                  style={{ background:'none', border:'1px solid #1e1e1e', borderRadius:6, width:30, height:30, cursor:'pointer', color:'#555', fontSize:'0.85rem', transition:'all 0.15s' }}
+                  onMouseEnter={e => { e.target.style.borderColor='#ff6b6b'; e.target.style.color='#ff6b6b'; }}
+                  onMouseLeave={e => { e.target.style.borderColor='#1e1e1e'; e.target.style.color='#555'; }}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Footer */}
+      {done > 0 && (
+        <div style={{ marginTop:20, textAlign:'right' }}>
+          <button onClick={clearDone}
+            style={{ background:'none', border:'1px solid rgba(255,107,107,0.2)', color:'#ff6b6b', fontFamily:"'JetBrains Mono',monospace", fontSize:'0.7rem', padding:'7px 16px', borderRadius:8, cursor:'pointer', letterSpacing:'0.05em' }}>
+            Clear {done} completed task{done>1?'s':''}
+          </button>
+        </div>
+      )}
+
+      <div style={{ textAlign:'center', marginTop:32, fontFamily:"'JetBrains Mono',monospace", fontSize:'0.65rem', color:'#333' }}>
+        {total} total · {total-done} active · {done} done
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<TodoApp/>);
+</script>
+</body>
+</html>
